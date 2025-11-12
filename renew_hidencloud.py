@@ -5,8 +5,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium_stealth import stealth
 
 # --- Configuration ---
@@ -31,11 +29,10 @@ def renew_server():
     options.add_argument("start-maximized")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
-    options.binary_location = "/opt/chrome/chrome"
     
-    # Use webdriver-manager to automatically download and manage chromedriver
-    service = ChromeService(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    # In the GitHub Actions environment, browser-actions/setup-chrome adds chromedriver to the PATH.
+    # We can initialize the driver directly.
+    driver = webdriver.Chrome(options=options)
 
     # --- Apply Stealth ---
     stealth(driver,
