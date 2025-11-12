@@ -14,7 +14,7 @@ CHROME_VERSION="117.0.5938.149"
 wget -q https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip
 unzip chrome-linux64.zip
 mv chrome-linux64 /opt/chrome
-ln -s /opt/chrome/chrome /usr/local/bin/chrome
+ln -s /opt/chrome/chrome /usr/local/bin/google-chrome
 
 # 3. Install Python dependencies
 # This will install selenium, selenium-stealth, and webdriver-manager.

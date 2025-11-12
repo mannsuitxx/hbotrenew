@@ -31,6 +31,7 @@ def renew_server():
     options.add_argument("start-maximized")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
+    options.binary_location = "/opt/chrome/chrome"
     
     # Use webdriver-manager to automatically download and manage chromedriver
     service = ChromeService(ChromeDriverManager().install())
