@@ -54,7 +54,7 @@ def renew_server():
         # It's possible Cloudflare will present a challenge page.
         # We'll give it some time to resolve before looking for the login fields.
         print("Waiting for potential Cloudflare challenge to resolve...")
-        time.sleep(10) # Wait for 10 seconds
+        time.sleep(25) # Wait for 25 seconds
 
         print("Entering credentials...")
         user_field = wait.until(EC.visibility_of_element_located((By.NAME, "email")))
