@@ -31,7 +31,35 @@ def renew_server():
     # Enable headless mode if --headless flag is present or if running in CI
     if args.headless or os.environ.get("CI"):
         print("Running in headless mode.")
+        parser = argparse.ArgumentParser()
+    parser.add_argument("--headless", action="store_true", help="Run in headless mode")
+    parser.add_argument("--chrome-path", type=str, help="Path to Chrome executable")
+    args = parser.parse_args()
+
+    if not HIDENCLOUD_USERNAME or not HIDENCLOUD_PASSWORD:
+        print("Error: Please set the HIDENCLOUD_USERNAME and HIDENCLOUD_PASSWORD environment variables.")
+        return
+
+    options = uc.ChromeOptions()
+
+    # Enable headless mode if --headless flag is present or if running in CI
+    if args.headless or os.environ.get("CI"):
+        print("Running in headless mode.")
         options.add_argument("--headless")
+
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("start-maximized")
+    
+    # For GitHub Actions, the Chrome binary path is in the CHROME_BIN env var
+    chrome_bin = os.environ.get("CHROME_BIN")
+    if chrome_bin:
+        options.binary_location = chrome_bin
+        print(f"Using Chrome binary from CHROME_BIN: {chrome_bin}")
+    elif args.chrome_path:
+        options.binary_location = args.chrome_path
+        print(f"Using Chrome binary from --chrome-path: {args.chrome_path}")
 
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
