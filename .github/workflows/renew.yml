@@ -32,3 +32,10 @@ jobs:
         env:
           HIDENCLOUD_USERNAME: ${{ secrets.HIDENCLOUD_USERNAME }}
           HIDENCLOUD_PASSWORD: ${{ secrets.HIDENCLOUD_PASSWORD }}
+
+      - name: Upload screenshot on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: error-screenshot
+          path: error_screenshot.png
