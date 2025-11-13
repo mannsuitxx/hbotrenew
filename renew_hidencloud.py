@@ -1,6 +1,7 @@
 
 import os
 import time
+import argparse
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -17,12 +18,21 @@ def renew_server():
     Logs into HidenCloud, navigates to the server page, and clicks the renew button,
     using undetected-chromedriver to avoid bot detection.
     """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--headless", action="store_true", help="Run in headless mode")
+    args = parser.parse_args()
+
     if not HIDENCLOUD_USERNAME or not HIDENCLOUD_PASSWORD:
         print("Error: Please set the HIDENCLOUD_USERNAME and HIDENCLOUD_PASSWORD environment variables.")
         return
 
     options = uc.ChromeOptions()
-    options.add_argument("--headless") # Required for GitHub Actions
+
+    # Enable headless mode if --headless flag is present or if running in CI
+    if args.headless or os.environ.get("CI"):
+        print("Running in headless mode.")
+        options.add_argument("--headless")
+
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
