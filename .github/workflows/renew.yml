@@ -28,10 +28,15 @@ jobs:
         uses: browser-actions/setup-chrome@v1
 
       - name: Run the renewal script
+        id: renew_script
         run: python renew_hidencloud.py
         env:
           HIDENCLOUD_USERNAME: ${{ secrets.HIDENCLOUD_USERNAME }}
           HIDENCLOUD_PASSWORD: ${{ secrets.HIDENCLOUD_PASSWORD }}
+
+      - name: List files on failure
+        if: failure()
+        run: ls -l
 
       - name: Upload screenshot on failure
         if: failure()
