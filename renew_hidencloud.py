@@ -1,11 +1,11 @@
 
 import os
 import time
-from selenium import webdriver
+import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium_stealth import stealth
+from selenium.common.exceptions import TimeoutException
 
 # --- Configuration ---
 HIDENCLOUD_USERNAME = os.environ.get("HIDENCLOUD_USERNAME")
@@ -15,56 +15,84 @@ LOGIN_URL = "https://freepanel.hidencloud.com/server/2870cdbb"
 def renew_server():
     """
     Logs into HidenCloud, navigates to the server page, and clicks the renew button,
-    using selenium-stealth to avoid bot detection.
+    using undetected-chromedriver to avoid bot detection.
     """
     if not HIDENCLOUD_USERNAME or not HIDENCLOUD_PASSWORD:
         print("Error: Please set the HIDENCLOUD_USERNAME and HIDENCLOUD_PASSWORD environment variables.")
         return
 
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    options = uc.ChromeOptions()
+    options.add_argument("--headless") # Required for GitHub Actions
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("start-maximized")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
     
-    # In the GitHub Actions environment, browser-actions/setup-chrome adds chromedriver to the PATH.
-    # We can initialize the driver directly.
-    driver = webdriver.Chrome(options=options)
+    # For GitHub Actions, the Chrome binary path is in the CHROME_BIN env var
+    chrome_bin = os.environ.get("CHROME_BIN")
+    if chrome_bin:
+        options.binary_location = chrome_bin
+        print(f"Using Chrome binary from CHROME_BIN: {chrome_bin}")
 
-    # --- Apply Stealth ---
-    stealth(driver,
-            languages=["en-US", "en"],
-            vendor="Google Inc.",
-            platform="Win32",
-            webgl_vendor="Intel Inc.",
-            renderer="Intel Iris OpenGL Engine",
-            fix_hairline=True,
-            )
+    driver = uc.Chrome(options=options)
     # ---------------------
 
-    wait = WebDriverWait(driver, 30) # Increased wait time for potential challenges
+    wait = WebDriverWait(driver, 60) # Increased wait time for potential challenges
 
     try:
         print(f"Navigating to login page: {LOGIN_URL}")
         driver.get(LOGIN_URL)
 
         # It's possible Cloudflare will present a challenge page.
-        # We'll give it some time to resolve before looking for the login fields.
-        print("Waiting for potential Cloudflare challenge to resolve...")
-        time.sleep(25) # Wait for 25 seconds
+        # We'll wait for the email field to be visible, which should happen after any challenge.
+        print("Waiting for login page to load (this may take a moment due to Cloudflare)...")
+        
+        try:
+            # Try to find elements for Version B (English)
+            print("Attempting to find login elements for English version...")
+            user_field = wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Username or Email']")))
+            pass_field_locator = (By.XPATH, "//input[@placeholder='Password']")
+            login_button_locator = (By.XPATH, "//button[text()='Login']")
+            print("Found English version elements.")
+        except TimeoutException:
+            # If that fails, try to find elements for Version A (Localization keys)
+            print("English version not found, attempting to find elements for localization key version...")
+            user_field = wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='login.username-or-email']")))
+            pass_field_locator = (By.XPATH, "//input[@placeholder='login.password']")
+            login_button_locator = (By.XPATH, "//button[contains(., 'login.login')]")
+            print("Found localization key version elements.")
 
-        print("Entering credentials...")
-        user_field = wait.until(EC.visibility_of_element_located((By.NAME, "email")))
+        # Now, use the locators
+        print("Login page loaded. Entering credentials...")
         user_field.send_keys(HIDENCLOUD_USERNAME)
 
-        pass_field = wait.until(EC.visibility_of_element_located((By.NAME, "password")))
+        pass_field = wait.until(EC.visibility_of_element_located(pass_field_locator))
         pass_field.send_keys(HIDENCLOUD_PASSWORD)
 
-        login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']")))
-        login_button.click()
+        # NEW: Handle "Verify you are human" challenge on the login page
+        try:
+            print("Checking for 'Verify you are human' checkbox on login page...")
+            # The checkbox is likely in an iframe. Let's wait for the iframe to be present.
+            iframe_wait = WebDriverWait(driver, 15)
+            iframe = iframe_wait.until(EC.presence_of_element_located((By.XPATH, "//iframe[starts-with(@id, 'cf-chl-widget')]")))
+            driver.switch_to.frame(iframe)
+            
+            # Now, wait for the checkbox and click it
+            checkbox_wait = WebDriverWait(driver, 15)
+            checkbox = checkbox_wait.until(EC.element_to_be_clickable((By.XPATH, "//label[@class='cb-lb']/input[@type='checkbox']")))
+            checkbox.click()
+            print("'Verify you are human' checkbox clicked.")
+            
+            # Switch back to the main content
+            driver.switch_to.default_content()
+            
+        except TimeoutException:
+            print("No 'Verify you are human' checkbox found on login page, proceeding.")
+            # If we timed out, we might not need to click it, so we switch back just in case
+            driver.switch_to.default_content()
+
+        login_button = wait.until(EC.element_to_be_clickable(login_button_locator))
+        driver.execute_script("arguments[0].click();", login_button)
 
         print("Login successful. Waiting for dashboard...")
         
